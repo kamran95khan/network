@@ -1,0 +1,189 @@
+{% extends "network/layout.html" %}
+
+{% block title %}Following - Network{% endblock %}
+
+{% block body %}
+
+<h1>Following</h1>
+
+{% for post in page_obj %}
+
+<div class="post-card" id="post-{{ post.id }}">
+
+    <div class="post-header">
+
+        <a
+            class="username"
+            href="{% url 'profile' post.user.username %}"
+        >
+            {{ post.user.username }}
+        </a>
+
+    </div>
+
+
+    <div class="post-content">
+        {{ post.content }}
+    </div>
+
+
+    <div class="timestamp">
+        {{ post.timestamp }}
+    </div>
+
+
+    <div class="post-actions">
+
+        {% if user.is_authenticated %}
+
+            <button
+                class="like-button"
+                data-post-id="{{ post.id }}"
+            >
+                {% if user in post.likes.all %}
+                    ❤️ Unlike
+                {% else %}
+                    ♡ Like
+                {% endif %}
+            </button>
+
+        {% endif %}
+
+
+        <span
+            class="like-count"
+            id="likes-{{ post.id }}"
+        >
+            {{ post.likes.count }}
+        </span>
+
+    </div>
+
+</div>
+
+{% empty %}
+
+<p>No posts from people you follow.</p>
+
+{% endfor %}
+
+
+<div class="pagination">
+
+    {% if page_obj.has_previous %}
+
+        <a
+            href="?page={{ page_obj.previous_page_number }}"
+            class="page-button"
+        >
+            Previous
+        </a>
+
+    {% endif %}
+
+
+    <span class="page-number">
+        Page {{ page_obj.number }}
+        of
+        {{ page_obj.paginator.num_pages }}
+    </span>
+
+
+    {% if page_obj.has_next %}
+
+        <a
+            href="?page={{ page_obj.next_page_number }}"
+            class="page-button"
+        >
+            Next
+        </a>
+
+    {% endif %}
+
+</div>
+
+
+<script>
+
+function getCookie(name) {
+
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== "") {
+
+        const cookies = document.cookie.split(";");
+
+        for (let cookie of cookies) {
+
+            cookie = cookie.trim();
+
+            if (cookie.startsWith(name + "=")) {
+
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
+
+
+const csrftoken = getCookie("csrftoken");
+
+
+document.querySelectorAll(".like-button").forEach(button => {
+
+    button.addEventListener("click", () => {
+
+        const postId = button.dataset.postId;
+
+        fetch(`/like/${postId}`, {
+
+            method: "POST",
+
+            headers: {
+                "X-CSRFToken": csrftoken
+            }
+
+        })
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            if (data.error) {
+
+                alert(data.error);
+
+                return;
+            }
+
+
+            document.querySelector(
+                `#likes-${postId}`
+            ).innerText = data.likes;
+
+
+            if (data.liked) {
+
+                button.innerText = "❤️ Unlike";
+
+            } else {
+
+                button.innerText = "♡ Like";
+
+            }
+
+        });
+
+    });
+
+});
+
+</script>
+
+{% endblock %}

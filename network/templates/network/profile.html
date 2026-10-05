@@ -1,0 +1,142 @@
+{% extends "network/layout.html" %}
+
+{% block title %}
+    {{ profile_user.username }} - Network
+{% endblock %}
+
+{% block body %}
+
+<h1>{{ profile_user.username }}</h1>
+
+<div class="profile-stats">
+
+    <strong>Followers:</strong>
+    {{ profile_user.followers.count }}
+
+    &nbsp;&nbsp;
+
+    <strong>Following:</strong>
+    {{ profile_user.following.count }}
+
+</div>
+
+
+{% if user.is_authenticated and user != profile_user %}
+
+    <div class="follow-section">
+
+        {% if is_following %}
+
+            <form method="post"
+                  action="{% url 'unfollow' profile_user.username %}">
+
+                {% csrf_token %}
+
+                <button type="submit">
+                    Unfollow
+                </button>
+
+            </form>
+
+        {% else %}
+
+            <form method="post"
+                  action="{% url 'follow' profile_user.username %}">
+
+                {% csrf_token %}
+
+                <button type="submit">
+                    Follow
+                </button>
+
+            </form>
+
+        {% endif %}
+
+    </div>
+
+{% endif %}
+
+
+<hr>
+
+
+<h3>Posts</h3>
+
+{% for post in page_obj %}
+
+    <div class="post-card">
+
+        <div class="post-header">
+
+            <a
+                class="username"
+                href="{% url 'profile' post.user.username %}"
+            >
+                {{ post.user.username }}
+            </a>
+
+        </div>
+
+        <div class="post-content">
+            {{ post.content }}
+        </div>
+
+        <div class="timestamp">
+            {{ post.timestamp }}
+        </div>
+
+        <div class="post-actions">
+
+            <span>
+                ❤️ {{ post.likes.count }}
+            </span>
+
+        </div>
+
+    </div>
+
+{% empty %}
+
+    <p>No posts yet.</p>
+
+{% endfor %}
+
+
+<div class="pagination">
+
+    {% if page_obj.has_previous %}
+
+        <a
+            href="?page={{ page_obj.previous_page_number }}"
+            class="page-button"
+        >
+            Previous
+        </a>
+
+    {% endif %}
+
+
+    <span class="page-number">
+
+        Page {{ page_obj.number }}
+        of
+        {{ page_obj.paginator.num_pages }}
+
+    </span>
+
+
+    {% if page_obj.has_next %}
+
+        <a
+            href="?page={{ page_obj.next_page_number }}"
+            class="page-button"
+        >
+            Next
+        </a>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

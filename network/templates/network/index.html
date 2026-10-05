@@ -1,0 +1,356 @@
+{% extends "network/layout.html" %}
+
+{% block title %}
+    All Posts
+{% endblock %}
+
+{% block body %}
+
+<h2>All Posts</h2>
+
+{% if user.is_authenticated %}
+
+<div class="new-post">
+
+    <h3>New Post</h3>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <textarea
+            name="content"
+            placeholder="What's on your mind?"
+            required
+        ></textarea>
+
+        <button type="submit">
+            Post
+        </button>
+
+    </form>
+
+</div>
+
+{% endif %}
+
+
+{% for post in page_obj %}
+
+<div class="post">
+
+    <div class="post-header">
+
+        <a href="{% url 'profile' post.user.username %}">
+            <strong>{{ post.user.username }}</strong>
+        </a>
+
+        {% if user == post.user %}
+
+        <button
+            type="button"
+            class="edit-button"
+            data-id="{{ post.id }}"
+        >
+            Edit
+        </button>
+
+        {% endif %}
+
+    </div>
+
+
+    <div
+        class="post-content"
+        id="content-{{ post.id }}"
+    >
+        {{ post.content }}
+    </div>
+
+
+    <small>
+        {{ post.timestamp }}
+    </small>
+
+
+    <div class="post-actions">
+
+        <button
+            type="button"
+            class="like-button"
+            data-id="{{ post.id }}"
+        >
+            Like
+        </button>
+
+        <span id="likes-{{ post.id }}">
+            {{ post.likes.count }}
+        </span>
+
+
+        <button
+            type="button"
+            class="comment-button"
+            data-id="{{ post.id }}"
+        >
+            Comment
+        </button>
+
+    </div>
+
+
+    <!-- COMMENTS -->
+
+    <div
+        class="comments-section"
+        id="comments-{{ post.id }}"
+        style="display: none;"
+    >
+
+        {% for comment in post.comments.all %}
+
+        <div class="comment">
+
+            <strong>
+                {{ comment.user.username }}
+            </strong>
+
+            <span>
+                {{ comment.content }}
+            </span>
+
+            <small>
+                {{ comment.timestamp }}
+            </small>
+
+        </div>
+
+        {% empty %}
+
+        <p>
+            No comments yet.
+        </p>
+
+        {% endfor %}
+
+
+        {% if user.is_authenticated %}
+
+        <form
+            method="POST"
+            action="{% url 'add_comment' post.id %}"
+        >
+
+            {% csrf_token %}
+
+            <input
+                type="text"
+                name="content"
+                placeholder="Write a comment..."
+                required
+            >
+
+            <button type="submit">
+                Send
+            </button>
+
+        </form>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% empty %}
+
+<p>No posts yet.</p>
+
+{% endfor %}
+
+
+<!-- PAGINATION -->
+
+<div class="pagination">
+
+    {% if page_obj.has_previous %}
+
+        <a href="?page={{ page_obj.previous_page_number }}">
+            Previous
+        </a>
+
+    {% endif %}
+
+
+    <span>
+        Page {{ page_obj.number }}
+        of {{ page_obj.paginator.num_pages }}
+    </span>
+
+
+    {% if page_obj.has_next %}
+
+        <a href="?page={{ page_obj.next_page_number }}">
+            Next
+        </a>
+
+    {% endif %}
+
+</div>
+
+
+<script>
+
+function getCookie(name) {
+
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+
+        const cookies = document.cookie.split(';');
+
+        for (let cookie of cookies) {
+
+            cookie = cookie.trim();
+
+            if (cookie.substring(0, name.length + 1) === name + '=') {
+
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
+
+
+/* COMMENT BUTTON */
+
+document.querySelectorAll('.comment-button').forEach(function(button) {
+
+    button.addEventListener('click', function() {
+
+        const postId = this.dataset.id;
+
+        const section = document.getElementById(
+            'comments-' + postId
+        );
+
+        if (section.style.display === 'none') {
+
+            section.style.display = 'block';
+
+            this.innerText = 'Hide Comments';
+
+        } else {
+
+            section.style.display = 'none';
+
+            this.innerText = 'Comment';
+
+        }
+
+    });
+
+});
+
+
+/* LIKE */
+
+document.querySelectorAll('.like-button').forEach(function(button) {
+
+    button.addEventListener('click', function() {
+
+        const postId = this.dataset.id;
+
+        fetch(
+            '/like/' + postId,
+            {
+                method: 'POST',
+
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            }
+        )
+        .then(response => response.json())
+        .then(data => {
+
+            document.getElementById(
+                'likes-' + postId
+            ).innerText = data.likes;
+
+        });
+
+    });
+
+});
+
+
+/* EDIT */
+
+document.querySelectorAll('.edit-button').forEach(function(button) {
+
+    button.addEventListener('click', function() {
+
+        const postId = this.dataset.id;
+
+        const contentElement = document.getElementById(
+            'content-' + postId
+        );
+
+        const newContent = prompt(
+            'Edit your post:',
+            contentElement.innerText
+        );
+
+        if (newContent === null) {
+            return;
+        }
+
+        const formData = new FormData();
+
+        formData.append(
+            'content',
+            newContent
+        );
+
+        fetch(
+            '/edit/' + postId,
+            {
+                method: 'POST',
+
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+
+                body: formData
+            }
+        )
+        .then(response => response.json())
+        .then(data => {
+
+            if (data.success) {
+
+                contentElement.innerText =
+                    data.content;
+
+            } else {
+
+                alert(data.error);
+
+            }
+
+        });
+
+    });
+
+});
+
+</script>
+
+{% endblock %}
